@@ -1,0 +1,163 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Detail</title>
+    <link rel="stylesheet" href="{% static 'css/product_detail.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+</head>
+<body>
+    <!-- Navigation-->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container px-4 px-lg-5">
+            <a class="navbar-brand" href="#!">Start Bootstrap</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span
+                    class="navbar-toggler-icon"></span></button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
+                    <li class="nav-item"><a class="nav-link active" aria-current="page" href="{% url 'product_list' %}">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'about_us' %}">About</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'contact_us' %}">Contact</a></li>
+                </ul>
+                <form class="d-flex">
+                    <a href="{% url 'cart' %}"><button class="btn btn-outline-dark" type="button">
+                        <i class="bi-cart-fill me-1"></i>
+                        <i class="badge bg-djanger text-dark rounded-pill" id="cart_quantity">{{cart|length}}</i>
+                        Cart
+                    </button></a>
+                </form>
+            </div>
+        </div>
+    </nav>
+    <!-- Alert Add Product -->
+    <div id="alert-container" class="position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
+    <div class="container mt-5">
+        <div class="row">
+            <!-- Product Images -->
+            <div class="col-md-6 mb-4">
+                {% if product.productimage_set.all %}
+                    <img src="{{product.productimage_set.all.0.avatar.url}}" alt="Product" class="img-fluid rounded mb-3 product-image" id="mainImage">
+                    <div class="d-flex justify-content-between">
+                        {% for image in product.productimage_set.all %}
+                            <img src="{{image.avatar.url}}" alt="Thumbnail 1" class="thumbnail rounded active" onclick="changeImage(event, this.src)">
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <img src="{% static 'assets/dummy-image.jpg' %}" alt="Product" class="img-fluid rounded mb-3 product-image"
+                        id="mainImage">
+                    <div class="d-flex justify-content-between">
+                        <img src="{% static 'assets/dummy-image.jpg' %}" alt="Thumbnail 1" class="thumbnail rounded active"
+                            onclick="changeImage(event, this.src)">
+                    </div>
+                {% endif %}
+            </div>
+            <!-- Product Details -->
+            <div class="col-md-6">
+                <h2 class="mb-3">{{product.name}}</h2>
+                <p class="text-muted mb-4">SKU: WH1000XM4</p>
+                <div class="mb-3">
+                    <span class="h4 me-2">${{product.price}}</span>
+                </div>
+                <div class="mb-3 me-4 d-flex align-items-center">
+                    <select id="rating-select" class="form-select" aria-label="Default select example">
+                        <option selected disabled>Give your rating</option>
+                        <option value="1">1 - Very Bad</option>
+                        <option value="2">2 - Bad</option>
+                        <option value="3">3 - Okay</option>
+                        <option value="4">4 - Good</option>
+                        <option value="5">5 - Excellent</option>
+                    </select>
+                    <span class="ms-4 text-nowrap">({{rate.total}} rates)</span>
+                </div>
+                <p class="mb-4">{{product.description}}</p>
+                {% if product.stock > 0 %}
+                    <button type="button" value="{{product.id}}" id="add-cart" class="btn btn-primary btn-lg mb-3 me-2">
+                        <i class="bi bi-cart-plus"></i> Add to Cart
+                    </button>
+                {% else %}
+                    <button class="btn btn-danger btn-lg mb-3 me-2">
+                        <i class="bi bi-cart-plus"></i> Stock is Zero
+                    </button>
+                {% endif %}
+                <div class="mt-4">
+                    <h5>Key Features:</h5>
+                    <ul>
+                        <li>Industry-leading noise cancellation</li>
+                        <li>30-hour battery life</li>
+                        <li>Touch sensor controls</li>
+                        <li>Speak-to-chat technology</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function changeImage(event, src) {
+            document.getElementById('mainImage').src = src;
+            document.querySelectorAll('.thumbnail').forEach(thumb => thumb.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+    </script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script>
+        $(document).on('click', '#add-cart', function (e) {
+            e.preventDefault();
+
+            $.ajax({
+                type: 'POST',
+                url: "{% url 'cart_add' %}",
+                data: {
+                    product_id: $("#add-cart").val(),
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function (json) {
+                    console.log(json);
+                    $("#cart_quantity").text(json.total_cart)
+                    // ساخت alert جدید
+                    let alertHtml = `
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        ✅ Item successfully added to cart!
+                    </div>
+                `;
+
+                    // اضافه‌کردن alert به container
+                    $('#alert-container').html(alertHtml);
+
+                    // بعد از ۵ ثانیه حذف شود
+                    setTimeout(function () {
+                        $('.alert').alert('close');
+                    }, 5000);
+                },
+                error: function (xhr, errmsg, err) {
+                    console.log(xhr.status + ": " + xhr.responseText);
+                }
+            });
+        });
+        // Rating Scripts
+        $(document).on('change', '#rating-select', function (e) {
+                e.preventDefault();
+                $.ajax({
+                    type: 'POST',
+                    url: "{% url 'rate_product' %}",  // آدرس view که در url.py نوشتی
+                    data: {
+                        'product_id': '{{ product.id }}',  // فرض: id محصول رو از قالب میگیری
+                        'rate': $(this).val(),            // مقدار انتخاب شده
+                        'csrfmiddlewaretoken': '{{ csrf_token }}',
+                    },
+                    success: function (json) {
+                        alert("Your rate is saved this is average rate. " + json.new_average);
+                    },
+                    error: function (xhr, errmsg, err) {
+                        console.log(xhr.status + ": " + xhr.responseText);
+                    }
+                });
+            });
+    </script>
+</body>
+</html>
