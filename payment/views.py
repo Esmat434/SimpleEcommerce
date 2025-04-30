@@ -1,62 +1,62 @@
+import uuid
+
 from accounts.decorators import login_required
 
-import uuid
-from django.shortcuts import render,redirect,get_object_or_404
-
 from cart.cart import Cart
+
 from product.models import Product
+
+from django.shortcuts import render,redirect,get_object_or_404
 
 from .forms import (
     ShippingAddressCreationForm,PaymentCreationForm
 )
+
 from .models import (
-    ShippingAddress,Order,OrderItem
+    ShippingAddress,Payment,Order,OrderItem
 )
-# Create your views here.
 
 @login_required
-def shipping_register(request):
-    cart = request.session.get('session_key',{})
+def shipping_register_view(request):
+    cart = request.session.get('sesssion_key',{})
     if not cart or not any(cart.items()):
         return redirect('cart')
+    
     try:
-        shipping_address = ShippingAddress.objects.get(user = request.user)
+        shipping = ShippingAddress.objects.get(user = request.user)
         order = order_add(request)
-        orderItem_add(request,order)
-        request.session['session_key'] = {}
-        request.session.modified = True
         return redirect('payment',order.id)
-    except ShippingAddress.DoesNotExist:
+    except:
         if request.method == 'POST':
             form = ShippingAddressCreationForm(request.POST)
             if form.is_valid():
                 shipping = form.save(commit=False)
                 shipping.user = request.user
                 shipping.save()
-                request.session['session_key'] = {}
-                request.session.modified = True
-                redirect('payment',order.id)
+                order = order_add(request)
+                return redirect('payment',order.id)
     form = ShippingAddressCreationForm()
     return render(request,'shipping.html',{'form':form})
 
-@login_required
 def order_add(request):
-    shipping = get_object_or_404(ShippingAddress,user = request.user)
+    shipping_address = get_object_or_404(ShippingAddress,user = request.user)
+
     order = Order.objects.create(
         user = request.user,
-        shipping_address = shipping
+        shipping_address = shipping_address
     )
     return order
 
-@login_required
 def orderItem_add(request,order):
     cart = Cart(request)
     cart_data = request.session.get('session_key',{})
 
     for product_id,item in cart_data.items():
-        product = Product.objects.get(id = int(product_id))
-        quantity = int(item['quantity'])
+        product = get_object_or_404(Product,id = int(product_id))
         price = int(item['price'])
+        quantity = int(item['quantity'])
+        product.stock-=quantity
+        product.save()
 
         OrderItem.objects.create(
             order = order,
@@ -80,7 +80,9 @@ def payment_view(request,order_id):
             payment.paid = True
             payment.transaction_id = str(uuid.uuid4())
             payment.save()
-            
+            orderItem_add(request,order)
+            request.session['session_key'] = {}
+            request.session.modified = True
             return redirect('payment_success')
     form = PaymentCreationForm()
     return render(request,'payment.html',{'form':form})
